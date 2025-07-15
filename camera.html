@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Phone Camera Uploader</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #111; color: white; }
+    video { width: 90vw; height: auto; margin-top: 20px; border-radius: 10px; }
+    #status { margin-top: 10px; color: lightgreen; }
+  </style>
+</head>
+<body>
+  <h1>📷 Phone Camera</h1>
+  <video id="video" autoplay playsinline></video>
+  <div id="status">Initializing...</div>
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const urlParams = new URLSearchParams(window.location.search);
+    const target = urlParams.get('target');
+
+    if (!target) {
+      status.textContent = "❌ No target provided in URL.";
+      throw new Error("Missing ?target= param");
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        setInterval(() => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0);
+          const dataUrl = canvas.toDataURL('image/jpeg');
+
+          fetch(target, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataUrl })
+          }).then(res => {
+            if (res.ok) {
+              status.textContent = "✅ Sent";
+            } else {
+              status.textContent = "⚠️ Failed to send";
+            }
+          }).catch(err => {
+            status.textContent = "🚫 Error sending";
+          });
+        }, 1000);
+
+      } catch (err) {
+        status.textContent = "❌ Camera access denied or error.";
+        console.error(err);
+      }
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>
